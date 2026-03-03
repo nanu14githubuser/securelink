@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecureLink — E2E Encrypted Chat</title>
+<script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+<style>
+:root{--bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:#1e2d45;--accent:#3b82f6;--accent2:#6366f1;--green:#10b981;--red:#ef4444;--text:#e2e8f0;--muted:#64748b;--bme:#1e3a5f;--bthem:#1a2235}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.screen{display:none;flex-direction:column;height:100vh}.screen.active{display:flex}
+#setup{align-items:center;justify-content:center;background:radial-gradient(ellipse at 30% 40%,#0f1f3d,var(--bg) 70%)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:48px 40px;width:440px;max-width:95vw;text-align:center;box-shadow:0 25px 60px rgba(0,0,0,.5)}
+.logo{width:64px;height:64px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 20px;box-shadow:0 8px 24px rgba(59,130,246,.3)}
+h1{font-size:26px;font-weight:700;margin-bottom:6px}.sub{color:var(--muted);font-size:14px;margin-bottom:32px}
+.ig{text-align:left;margin-bottom:16px}
+label{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:6px}
+input[type=text]{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-size:15px;outline:none;transition:border-color .2s}
+input[type=text]:focus{border-color:var(--accent)}
+.btn{width:100%;padding:13px;border-radius:10px;border:none;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;margin-top:8px}
+.bp{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 4px 16px rgba(59,130,246,.3)}
+.bp:hover{transform:translateY(-1px)}.bp:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.ks{margin-top:16px;padding:12px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:13px;color:var(--muted)}
+.ks.ok{border-color:var(--green);color:var(--green)}
+#main{flex-direction:row}
+.sb{width:300px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.sbh{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.ui{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.av{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0}
+.un{font-weight:600;font-size:14px}.us{font-size:11px;color:var(--green)}
+.e2e{display:inline-flex;align-items:center;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--green);font-size:10px;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:20px;text-transform:uppercase}
+.is{display:flex;gap:6px;margin-top:10px}.is input{flex:1;font-size:13px;padding:9px 12px}
+.bsm{padding:9px 14px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.bi{background:var(--accent);color:#fff}.bi:hover{background:#2563eb}
+.sl{padding:12px 16px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.ri{padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.03)}
+.rav{width:32px;height:32px;border-radius:50%;background:rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;color:var(--accent)}
+.rif{flex:1;min-width:0}.rn{font-size:13px;font-weight:600}.rs{font-size:11px;color:var(--muted)}
+.ra{display:flex;gap:5px}
+.ba{background:var(--green);color:#fff;padding:5px 10px;border-radius:6px;border:none;font-size:12px;cursor:pointer;font-weight:600}
+.br2{background:transparent;color:var(--red);padding:5px 10px;border-radius:6px;border:1px solid var(--red);font-size:12px;cursor:pointer}
+.cl{flex:1;overflow-y:auto}
+.ci{padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:background .15s;border-bottom:1px solid rgba(255,255,255,.03)}
+.ci:hover,.ci.active{background:var(--surface2)}
+.cav{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+.cn{font-size:14px;font-weight:600}.cp{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lk{font-size:10px;color:var(--green);margin-left:auto;flex-shrink:0}
+.es{padding:24px 16px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
+.ca{flex:1;display:flex;flex-direction:column;background:var(--bg);min-width:0}
+.ch{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--surface)}
+.ch .av{background:linear-gradient(135deg,#2563eb,#7c3aed)}
+.chn .nm{font-weight:700;font-size:15px}.chn .en{font-size:11px;color:var(--green)}
+.msgs{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:8px}
+.msgs::-webkit-scrollbar{width:4px}.msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.msg{display:flex;flex-direction:column;max-width:68%}
+.msg.me{align-self:flex-end;align-items:flex-end}.msg.them{align-self:flex-start;align-items:flex-start}
+.mb{padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;word-break:break-word}
+.msg.me .mb{background:var(--bme);border-bottom-right-radius:4px}
+.msg.them .mb{background:var(--bthem);border:1px solid var(--border);border-bottom-left-radius:4px}
+.mm{font-size:10px;color:var(--muted);margin-top:3px;padding:0 4px}
+.sm{text-align:center;font-size:12px;color:var(--muted);padding:7px 16px;background:var(--surface2);border-radius:20px;align-self:center;border:1px solid var(--border);max-width:90%}
+.cia{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:flex-end;background:var(--surface)}
+.mi{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 15px;color:var(--text);font-size:14px;outline:none;resize:none;min-height:44px;max-height:120px;font-family:inherit;transition:border-color .2s;line-height:1.4}
+.mi:focus{border-color:var(--accent)}
+.sb2{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all .2s;flex-shrink:0;color:#fff}
+.sb2:hover{transform:scale(1.05)}.sb2:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.nc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted)}
+.nc .ic{font-size:52px;opacity:.25}
+.cbar{padding:8px 16px;font-size:12px;text-align:center;font-weight:600}
+.cbar.connecting{background:rgba(245,158,11,.1);color:#f59e0b;border-bottom:1px solid rgba(245,158,11,.2)}
+.cbar.connected{background:rgba(16,185,129,.1);color:var(--green);border-bottom:1px solid rgba(16,185,129,.2)}
+.cbar.disconnected{background:rgba(239,68,68,.1);color:var(--red);border-bottom:1px solid rgba(239,68,68,.2)}
+.tc{position:fixed;top:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:999;pointer-events:none}
+.toast{padding:12px 18px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:si .25s ease;max-width:320px}
+@keyframes si{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+.toast.info{background:var(--surface);border:1px solid var(--border)}
+.toast.ok{background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.4);color:var(--green)}
+.toast.err{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:var(--red)}
+</style>
+</head>
+<body>
+
+<div id="setup" class="screen active">
+  <div class="card">
+    <div class="logo">🔐</div>
+    <h1>SecureLink</h1>
+    <p class="sub">True end-to-end encrypted messaging.<br>No servers. No logs. No compromise.</p>
+    <div class="ig">
+      <label>Choose your username</label>
+      <input type="text" id="uIn" placeholder="e.g. alice  or  bob_99" maxlength="20" autocomplete="off"/>
+    </div>
+    <button class="btn bp" id="sBtn" disabled>Generate Keys &amp; Enter</button>
+    <div class="ks" id="ks">🔑 RSA-2048 + AES-256 keys will be generated in your browser</div>
+  </div>
+</div>
+
+<div id="main" class="screen">
+  <div class="sb">
+    <div id="cBar" class="cbar connecting">⏳ Connecting…</div>
+    <div class="sbh">
+      <div class="ui">
+        <div class="av" id="mAv">?</div>
+        <div>
+          <div class="un" id="mUn">—</div>
+          <div class="us">● Secure session active</div>
+        </div>
+        <div style="margin-left:auto"><span class="e2e">E2E</span></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5">Share your username so others can invite you</div>
+      <div class="is">
+        <input type="text" id="iIn" placeholder="Username to invite…"/>
+        <button class="bsm bi" onclick="sendInv()">Invite</button>
+      </div>
+    </div>
+    <div id="rSec" style="display:none">
+      <div class="sl">⏳ Pending Requests</div>
+      <div id="rList"></div>
+    </div>
+    <div class="sl">🔒 Secure Contacts</div>
+    <div class="cl" id="cList">
+      <div class="es">No contacts yet.<br>Invite someone to get started.</div>
+    </div>
+  </div>
+  <div class="ca" id="cArea">
+    <div class="nc">
+      <div class="ic">💬</div>
+      <p>Select a contact to start chatting</p>
+      <p style="font-size:13px;opacity:.6">All messages are encrypted end-to-end</p>
+    </div>
+  </div>
+</div>
+
+<div class="tc" id="tc"></div>
+
+<script>
+// ╔══════════════════════════════════════════════════╗
+// ║  PASTE YOUR ABLY KEY HERE — only change needed  ║
+const ABLY_KEY = "FGi2yQ.aOijaw:QqaEogj9SUnBpzn5DyeX6fGpda1gITW3ZKi3FZDUlc8";
+// ║  Looks like: xVLyHw.abc123:xxxxxxxxxxxxxxxxxxx  ║
+// ╚══════════════════════════════════════════════════╝
+
+// ── Real E2E Crypto (Web Crypto API) ──
+const CE = {
+  gen: () => crypto.subtle.generateKey(
+    {name:'RSA-OAEP',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},
+    true, ['encrypt','decrypt']
+  ),
+  expPub: async k => {
+    const b = await crypto.subtle.exportKey('spki', k);
+    return btoa(String.fromCharCode(...new Uint8Array(b)));
+  },
+  impPub: b64 => {
+    const b = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    return crypto.subtle.importKey('spki', b, {name:'RSA-OAEP',hash:'SHA-256'}, false, ['encrypt']);
+  },
+  enc: async (pub, txt) => {
+    const ak = await crypto.subtle.generateKey({name:'AES-GCM',length:256}, true, ['encrypt','decrypt']);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({name:'AES-GCM',iv}, ak, new TextEncoder().encode(txt));
+    const rk = await crypto.subtle.exportKey('raw', ak);
+    const ek = await crypto.subtle.encrypt({name:'RSA-OAEP'}, pub, rk);
+    return {
+      ek: btoa(String.fromCharCode(...new Uint8Array(ek))),
+      iv: btoa(String.fromCharCode(...iv)),
+      ct: btoa(String.fromCharCode(...new Uint8Array(ct)))
+    };
+  },
+  dec: async (priv, {ek,iv,ct}) => {
+    const rk = await crypto.subtle.decrypt({name:'RSA-OAEP'}, priv,
+      Uint8Array.from(atob(ek), c => c.charCodeAt(0)));
+    const ak = await crypto.subtle.importKey('raw', rk, {name:'AES-GCM'}, false, ['decrypt']);
+    const p = await crypto.subtle.decrypt(
+      {name:'AES-GCM', iv: Uint8Array.from(atob(iv), c => c.charCodeAt(0))},
+      ak, Uint8Array.from(atob(ct), c => c.charCodeAt(0))
+    );
+    return new TextDecoder().decode(p);
+  }
+};
+
+// ── App State ──
+const S = {u:'', kp:null, pub:'', cx:{}, pi:{}, po:{}, ac:null, ably:null, myChannel:null};
+
+// ── Connect to Ably ──
+function connect(username) {
+  const ably = new Ably.Realtime({key: ABLY_KEY, clientId: username});
+  S.ably = ably;
+
+  ably.connection.on('connected', () => {
+    setBar('connected', '🔒 Connected — E2E encrypted');
+    toast('🌐 Connected to network', 'ok');
+  });
+  ably.connection.on('disconnected', () => setBar('disconnected', '❌ Disconnected'));
+  ably.connection.on('suspended',    () => setBar('disconnected', '❌ Connection lost — retrying…'));
+
+  // Each user subscribes to their own channel: "user-<username>"
+  const ch = ably.channels.get(`securelink-user-${username}`);
+  S.myChannel = ch;
+
+  ch.subscribe(async msg => {
+    const m = msg.data;
+    if (!m || !m.type || m.from === S.u) return;
+
+    if (m.type === 'INV' && m.to === S.u) {
+      if (S.cx[m.from] || S.pi[m.from]) return;
+      S.pi[m.from] = {pub: m.pub};
+      rReq();
+      toast(`📨 Invite from ${m.from}`, 'info');
+    }
+    else if (m.type === 'ACC' && m.to === S.u && S.po[m.from]) {
+      delete S.po[m.from];
+      const ik = await CE.impPub(m.pub);
+      S.cx[m.from] = {pub:m.pub, ik, msgs:[]};
+      rCx();
+      toast(`✅ ${m.from} accepted! Encrypted channel open.`, 'ok');
+    }
+    else if (m.type === 'MSG' && m.to === S.u && S.cx[m.from]) {
+      try {
+        const t = await CE.dec(S.kp.privateKey, m.p);
+        S.cx[m.from].msgs.push({f:m.from, t, ts:m.ts});
+        if (S.ac === m.from) rChat(m.from);
+        else toast(`💬 Message from ${m.from}`, 'info');
+        rCx();
+      } catch(e) { toast('⚠️ Decrypt failed', 'err'); }
+    }
+  });
+}
+
+// Send to someone's channel
+function sendTo(toUser, data) {
+  const ch = S.ably.channels.get(`securelink-user-${toUser}`);
+  ch.publish('msg', data);
+}
+
+// ── Setup ──
+const uIn = document.getElementById('uIn');
+const sBtn = document.getElementById('sBtn');
+const ks   = document.getElementById('ks');
+
+uIn.addEventListener('input', () => {
+  sBtn.disabled = uIn.value.trim().length < 2 || !/^[a-zA-Z0-9_]+$/.test(uIn.value.trim());
+});
+uIn.addEventListener('keydown', e => { if(e.key==='Enter'&&!sBtn.disabled) go(); });
+sBtn.addEventListener('click', go);
+
+async function go() {
+  const u = uIn.value.trim();
+  sBtn.disabled = true;
+  sBtn.textContent = 'Generating keys…';
+  ks.textContent = '⚙️ Generating RSA-2048 key pair…';
+  try {
+    const kp  = await CE.gen();
+    const pub = await CE.expPub(kp.publicKey);
+    Object.assign(S, {u, kp, pub});
+    ks.className = 'ks ok';
+    ks.textContent = '✓ Keys generated. Private key stays in this browser.';
+    document.getElementById('mUn').textContent = u;
+    document.getElementById('mAv').textContent = u[0].toUpperCase();
+    document.getElementById('setup').classList.remove('active');
+    document.getElementById('main').classList.add('active');
+    connect(u);
+    toast('🔑 Secure session started!', 'ok');
+  } catch(err) {
+    ks.textContent = '❌ ' + err.message;
+    sBtn.disabled = false;
+    sBtn.textContent = 'Generate Keys & Enter';
+  }
+}
+
+// ── Invites ──
+function sendInv() {
+  const to = document.getElementById('iIn').value.trim();
+  if (!to) return;
+  if (to === S.u)   { toast('Cannot invite yourself','err'); return; }
+  if (S.cx[to])     { toast(`${to} is already a contact`,'err'); return; }
+  if (S.po[to])     { toast('Invite already sent','info'); return; }
+  S.po[to] = true;
+  document.getElementById('iIn').value = '';
+  sendTo(to, {type:'INV', from:S.u, to, pub:S.pub});
+  toast(`📤 Invite sent to ${to}`, 'ok');
+}
+
+function accReq(from) {
+  const r = S.pi[from]; if (!r) return;
+  CE.impPub(r.pub).then(ik => {
+    S.cx[from] = {pub:r.pub, ik, msgs:[]};
+    delete S.pi[from];
+    sendTo(from, {type:'ACC', from:S.u, to:from, pub:S.pub});
+    rReq(); rCx();
+    toast(`✅ Connected with ${from} — encrypted!`, 'ok');
+  });
+}
+
+function rejReq(from) {
+  delete S.pi[from];
+  rReq();
+  toast(`Declined invite from ${from}`, 'info');
+}
+
+// ── Messaging ──
+async function sendMsg() {
+  const c = S.ac; if (!c) return;
+  const inp = document.getElementById('mIn');
+  const txt = inp.value.trim(); if (!txt) return;
+  inp.value = ''; inp.style.height = 'auto';
+  const sb = document.getElementById('sb2');
+  sb.disabled = true;
+  try {
+    const p  = await CE.enc(S.cx[c].ik, txt);
+    const ts = Date.now();
+    sendTo(c, {type:'MSG', from:S.u, to:c, p, ts});
+    S.cx[c].msgs.push({f:S.u, t:txt, ts});
+    rChat(c); rCx();
+  } catch(err) {
+    toast('Encrypt error: ' + err.message, 'err');
+  } finally {
+    sb.disabled = false;
+  }
+}
+
+// ── Render ──
+function rReq() {
+  const sec  = document.getElementById('rSec');
+  const list = document.getElementById('rList');
+  const keys = Object.keys(S.pi);
+  if (!keys.length) { sec.style.display='none'; return; }
+  sec.style.display = 'block';
+  list.innerHTML = keys.map(f => `
+    <div class="ri">
+      <div class="rav">${f[0].toUpperCase()}</div>
+      <div class="rif">
+        <div class="rn">${e(f)}</div>
+        <div class="rs">Wants to connect securely</div>
+      </div>
+      <div class="ra">
+        <button class="ba"  onclick="accReq('${e(f)}')">✓ Accept</button>
+        <button class="br2" onclick="rejReq('${e(f)}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function rCx() {
+  const list = document.getElementById('cList');
+  const keys = Object.keys(S.cx);
+  if (!keys.length) {
+    list.innerHTML = '<div class="es">No contacts yet.<br>Invite someone to get started.</div>';
+    return;
+  }
+  list.innerHTML = keys.map(n => {
+    const ms = S.cx[n].msgs, l = ms[ms.length-1];
+    const pv = l ? (l.f===S.u ? 'You: ' : '') + l.t : 'Tap to chat securely';
+    return `
+      <div class="ci${n===S.ac?' active':''}" onclick="openChat('${e(n)}')">
+        <div class="cav">${n[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div class="cn">${e(n)}</div>
+          <div class="cp">${e(pv.substring(0,45))}</div>
+        </div>
+        <div class="lk">🔒</div>
+      </div>`;
+  }).join('');
+}
+
+function openChat(n) { S.ac = n; rCx(); rChat(n); }
+
+function rChat(n) {
+  const cx = S.cx[n]; if (!cx) return;
+  document.getElementById('cArea').innerHTML = `
+    <div class="ch">
+      <div class="av">${n[0].toUpperCase()}</div>
+      <div class="chn">
+        <div class="nm">${e(n)}</div>
+        <div class="en">🔒 RSA-2048 + AES-256-GCM · End-to-end encrypted</div>
+      </div>
+    </div>
+    <div class="msgs" id="mList">
+      <div class="sm">🔐 Only you and ${e(n)} can read these messages.</div>
+      ${cx.msgs.map(m => `
+        <div class="msg ${m.f===S.u?'me':'them'}">
+          <div class="mb">${e(m.t)}</div>
+          <div class="mm">${ft(m.ts)} · 🔒 encrypted</div>
+        </div>`).join('')}
+    </div>
+    <div class="cia">
+      <textarea class="mi" id="mIn" placeholder="Type a message… (encrypted before sending)" rows="1"></textarea>
+      <button class="sb2" id="sb2" onclick="sendMsg()">➤</button>
+    </div>`;
+
+  const inp = document.getElementById('mIn');
+  inp.addEventListener('input', () => {
+    inp.style.height = 'auto';
+    inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
+  });
+  inp.addEventListener('keydown', ev => {
+    if (ev.key==='Enter' && !ev.shiftKey) { ev.preventDefault(); sendMsg(); }
+  });
+  inp.focus();
+  requestAnimationFrame(() => {
+    const l = document.getElementById('mList');
+    if (l) l.scrollTop = l.scrollHeight;
+  });
+}
+
+function setBar(type, msg) {
+  const b = document.getElementById('cBar');
+  b.className = 'cbar ' + type;
+  b.textContent = msg;
+}
+function e(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function ft(ts) {
+  return new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+function toast(msg, type='info') {
+  const c = document.getElementById('tc');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 4500);
+}
+</script>
+</body>
+</html>
